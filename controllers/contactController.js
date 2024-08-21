@@ -7,7 +7,7 @@ const Contact = require("../models/contactModel");
 // now we make the access private.
 
 const getContacts = asyncHandler(async (req, res) => {
-  const contacts = await Contact.find({});
+  const contacts = await Contact.find({ user_id: req.user.id });
   res.status(200).json(contacts);
 });
 
@@ -40,6 +40,7 @@ const createContact = asyncHandler(async (req, res) => {
     name,
     email,
     phone,
+    user_id: req.user.id,
   });
   res.status(201).json({ message: `Contact ${contact} Created` });
 });
@@ -55,6 +56,13 @@ const deleteContact = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Contact not found");
   }
+  if (contact.user_id.toString() != req.user.id) {
+    res.status(403);
+    throw new Error("Not authorized to update this contact");
+  }
+  //or await Contact.remove(); but it is deprecated
+  // or await Contact.deleteOne();
+  //or await Contact.findByIdAndRemove(req.params.id);
   const deletedContact = await Contact.findByIdAndDelete(req.params.id);
   res.status(200).json({
     message: `Contact ${deletedContact} has been successfully deleted`,
@@ -72,12 +80,15 @@ const updateContact = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Contact not found");
   }
+  if (contact.user_id.toString() != req.user.id) {
+    res.status(403);
+    throw new Error("Not authorized to update this contact");
+  }
   const updatedContact = await Contact.findByIdAndUpdate(
     req.params.id,
     req.body,
     {
       new: true,
-      runValidators: true,
     }
   );
 
